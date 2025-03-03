@@ -15,11 +15,14 @@
  */
 package net.cuprak.demo.heap;
 
+import org.netbeans.lib.profiler.heap.FieldValue;
 import org.netbeans.lib.profiler.heap.Instance;
 import org.netbeans.lib.profiler.heap.ObjectArrayInstance;
 import org.netbeans.lib.profiler.heap.PrimitiveArrayInstance;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Sample set of utilities for processing internals of some key JDK classes including
@@ -28,6 +31,36 @@ import java.util.List;
  */
 @SuppressWarnings("unchecked")
 public class HeapUtils {
+
+    /**
+     * Processes a ConcurrentHashMap
+     * @param instance - ConcurrentHashMap instance
+     */
+    public static Map<Instance, Instance> processConcurrentHashMap(Instance instance) {
+        Map<Instance, Instance> rval = new HashMap<>();
+        ObjectArrayInstance table = (ObjectArrayInstance) instance.getValueOfField("table");
+        if (table != null) {
+            List<Instance> tableValues = table.getValues();
+            for (Instance tableValue : tableValues) {
+                processMapTable(tableValue, rval);
+            }
+        }
+        return rval;
+    }
+
+    private static void processMapTable(Instance node, Map<Instance, Instance> collect){
+        if (node == null ){
+            return;
+        }
+        Instance key = (Instance) node.getValueOfField("key");
+        Instance val = (Instance) node.getValueOfField("val");
+        Instance next = (Instance) node.getValueOfField("next");
+        collect.put(key, val);
+        if (next != null){
+            processMapTable(next, collect);
+        }
+    }
+
 
     /**
      * Processes a LinkedList
@@ -56,7 +89,7 @@ public class HeapUtils {
         return data.getValues();
     }
 
-    static String processString(Instance instance) {
+    public static String processString(Instance instance) {
         if(instance.getValueOfField("value") instanceof PrimitiveArrayInstance) {
             PrimitiveArrayInstance pi =
                     (PrimitiveArrayInstance) instance.getValueOfField("value");
@@ -69,6 +102,9 @@ public class HeapUtils {
                     } else if (obj instanceof Integer) {
                         int charCode = Integer.valueOf((String) obj);
                         builder.append(Character.toString((char) charCode));
+                    } else if (obj instanceof String) {
+                        int charCode = Integer.valueOf((String) obj);
+                        builder.append(Character.toString((char) charCode));
                     }
                 }
                 return builder.toString();
@@ -77,5 +113,23 @@ public class HeapUtils {
             return instance.getValueOfField("value").toString();
         }
         return "null";
+    }
+
+    public static void dump(Instance instance) {
+        System.err.println("Class is: " + instance.getJavaClass().getName());
+        System.err.println("Static Fields are: ");
+        List<FieldValue> staticFieldValues = instance.getStaticFieldValues();
+        for (FieldValue fieldValue : staticFieldValues) {
+            System.err.println("\t" + fieldValue.getField().getName()
+                    + ": " + fieldValue.getValue()
+                    + " (type: " + fieldValue.getField().getType().getName() + ")");
+        }
+        System.err.println("Fields are: ");
+        List<FieldValue> fieldValues = instance.getFieldValues();
+        for (FieldValue fieldValue : fieldValues) {
+            System.err.println("\t" + fieldValue.getField().getName()
+                    + ": " + fieldValue.getValue()
+                    + " (type: " + fieldValue.getField().getType().getName() + ")");
+        }
     }
 }
