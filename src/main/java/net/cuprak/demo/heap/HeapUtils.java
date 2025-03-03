@@ -20,6 +20,7 @@ import org.netbeans.lib.profiler.heap.Instance;
 import org.netbeans.lib.profiler.heap.ObjectArrayInstance;
 import org.netbeans.lib.profiler.heap.PrimitiveArrayInstance;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,13 +43,13 @@ public class HeapUtils {
         if (table != null) {
             List<Instance> tableValues = table.getValues();
             for (Instance tableValue : tableValues) {
-                processMapTable(tableValue, rval);
+                processConcurrentHashMapValues(tableValue, rval);
             }
         }
         return rval;
     }
 
-    private static void processMapTable(Instance node, Map<Instance, Instance> collect){
+    private static void processConcurrentHashMapValues(Instance node, Map<Instance, Instance> collect){
         if (node == null ){
             return;
         }
@@ -57,7 +58,36 @@ public class HeapUtils {
         Instance next = (Instance) node.getValueOfField("next");
         collect.put(key, val);
         if (next != null){
-            processMapTable(next, collect);
+            processConcurrentHashMapValues(next, collect);
+        }
+    }
+
+    /**
+     * Processes a HashMap
+     * @param instance - HashMap instance
+     */
+    public static Map<Instance, Instance> processHashMap(Instance instance) {
+        Map<Instance, Instance> rval = new HashMap<>();
+        ObjectArrayInstance table = (ObjectArrayInstance) instance.getValueOfField("table");
+        if (table != null) {
+            List<Instance> tableValues = table.getValues();
+            for (Instance tableValue : tableValues) {
+                processHashMapValues(tableValue, rval);
+            }
+        }
+        return rval;
+    }
+
+    private static void processHashMapValues(Instance node, Map<Instance, Instance> collect){
+        if (node == null ){
+            return;
+        }
+        Instance key = (Instance) node.getValueOfField("key");
+        Instance value = (Instance) node.getValueOfField("value");
+        Instance next = (Instance) node.getValueOfField("next");
+        collect.put(key, value);
+        if (next != null){
+            processConcurrentHashMapValues(next, collect);
         }
     }
 
@@ -83,7 +113,7 @@ public class HeapUtils {
      * @param instance - ArrayList instance
      * @return instance list
      */
-    public List<Instance> processArrayList(Instance instance) {
+    public static List<Instance> processArrayList(Instance instance) {
         ObjectArrayInstance data =
                 (ObjectArrayInstance) instance.getValueOfField("elementData");
         return data.getValues();
@@ -113,6 +143,13 @@ public class HeapUtils {
             return instance.getValueOfField("value").toString();
         }
         return "null";
+    }
+
+    public static Instant processInstant(Instance instance) {
+        final var seconds = (long)instance.getValueOfField("seconds");
+        final var nanos = (int)instance.getValueOfField("nanos");
+
+        return Instant.ofEpochSecond(seconds, nanos);
     }
 
     public static void dump(Instance instance) {
