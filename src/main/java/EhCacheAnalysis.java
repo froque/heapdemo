@@ -1,4 +1,7 @@
 import net.cuprak.demo.heap.HeapUtils;
+import org.ehcache.CopiedOnHeapValueHolder;
+import org.hibernate.CacheItem;
+import org.hibernate.QueryKey;
 import org.netbeans.lib.profiler.heap.Heap;
 import org.netbeans.lib.profiler.heap.HeapFactory;
 import org.netbeans.lib.profiler.heap.Instance;
@@ -41,27 +44,65 @@ public class EhCacheAnalysis {
         Instance realMapInstance = (Instance) map.getValueOfField("realMap");
         Map<Instance, Instance> realMap = HeapUtils.processConcurrentHashMap(realMapInstance);
         System.out.println(realMap.size());
-        Map<String, Integer> stringIntegerMap = new HashMap<>();
-        Map<String, Integer> typesCounter = new HashMap<>();
+        Map<QueryKey, Integer> queryKeyIntegerMap = new HashMap<>();
+        Map<QueryKey, CopiedOnHeapValueHolder<CacheItem>> dtoMap = new HashMap<>();
+        Map<String, Integer> keyTypesCounter = new HashMap<>();
+        Map<String, Integer> valuesTypesCounter = new HashMap<>();
         for (Map.Entry<Instance, Instance> entry : realMap.entrySet()) {
             if (entry.getKey() != null){
 
-                typesCounter.merge(entry.getKey().getJavaClass().getName(), 1, Integer::sum);
+                keyTypesCounter.merge(entry.getKey().getJavaClass().getName(), 1, Integer::sum);
+                valuesTypesCounter.merge(entry.getValue().getJavaClass().getName(), 1, Integer::sum);
 
                 if (entry.getKey().getJavaClass().getName().equals("org.hibernate.cache.spi.QueryKey")) {
-                    String s = processQueryKey(entry.getKey());
-                    stringIntegerMap.merge(s, 1, Integer::sum);
+                    final var queryKey = processQueryKey(entry.getKey());
+                    queryKeyIntegerMap.merge(queryKey, 1, Integer::sum);
+
+                    if (entry.getValue() != null) {
+                        final var copiedOnHeapValueHolder = processQueryValue(entry.getValue());
+                        dtoMap.put(queryKey, copiedOnHeapValueHolder);
+                    }
                 }
             }
         }
-        System.out.println(typesCounter);
-        System.out.println(stringIntegerMap);
+        System.out.println(keyTypesCounter);
+        System.out.println(valuesTypesCounter);
+        System.out.println(queryKeyIntegerMap);
+        System.out.println(dtoMap);
     }
-    private static String processQueryKey(Instance queryKey){
+
+    private static QueryKey processQueryKey(Instance queryKey){
         // org.hibernate.cache.spi.QueryKey
         Objects.requireNonNull(queryKey);
 
-        Instance sqlQueryString = (Instance) queryKey.getValueOfField("sqlQueryString");
-        return HeapUtils.processString(sqlQueryString);
+        final var sqlQueryStringInstance = (Instance) queryKey.getValueOfField("sqlQueryString");
+        String sqlQueryString = HeapUtils.processString(sqlQueryStringInstance);
+        final var hashCode = (int) queryKey.getValueOfField("hashCode");
+
+        return new QueryKey(sqlQueryString, hashCode);
+    }
+
+    private static CopiedOnHeapValueHolder<CacheItem> processQueryValue(Instance queryKey){
+        // org.ehcache.impl.internal.store.heap.holders.CopiedOnHeapValueHolder
+        Objects.requireNonNull(queryKey);
+
+        final var copiedValue = (Instance) queryKey.getValueOfField("copiedValue");
+        final var cacheItem = processCacheItem(copiedValue);
+        final var creationTime = (long) queryKey.getValueOfField("creationTime");
+        final var lastAccessTime = (long) queryKey.getValueOfField("lastAccessTime");
+        final var expirationTime = (long) queryKey.getValueOfField("expirationTime");
+
+        return new CopiedOnHeapValueHolder<>(cacheItem, creationTime, lastAccessTime, expirationTime);
+    }
+
+    private static CacheItem processCacheItem(Instance instance){
+        // org.hibernate.cache.internal.QueryResultsCacheImpl.CacheItem
+        Objects.requireNonNull(instance);
+
+        final var timestamp = (long) instance.getValueOfField("timestamp");
+        final var resultsInstance = (Instance) instance.getValueOfField("results");
+        List<Instance> results = HeapUtils.processArrayList(resultsInstance);
+
+        return new CacheItem(timestamp, results);
     }
 }
