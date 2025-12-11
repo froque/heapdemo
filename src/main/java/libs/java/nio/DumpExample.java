@@ -1,4 +1,4 @@
-package nio;
+package libs.java.nio;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;

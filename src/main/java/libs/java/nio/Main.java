@@ -1,4 +1,4 @@
-package nio;
+package libs.java.nio;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,11 +17,11 @@ public class Main {
         final JavaClass javaClassByName = heap.getJavaClassByName("java.nio.DirectByteBuffer");
         System.out.println(javaClassByName.getInstancesCount());
         final List<Instance> instances = javaClassByName.getInstances();
-        for (Instance instance : instances) {
-            //HeapUtils.dump(instance);
-            final var capacity = (int) instance.getValueOfField("capacity");
-            System.out.println(new DirectByteBuffer(capacity));
-        }
-    }
 
+        final List<DirectByteBuffer> bytebuffers = instances.stream().map(DirectByteBuffer::fromInstance).toList();
+
+        final Integer sum = bytebuffers.stream().map(DirectByteBuffer::capacity).reduce(0, Integer::sum);
+        System.out.println(sum);
+        // 185 238 350
+    }
 }
