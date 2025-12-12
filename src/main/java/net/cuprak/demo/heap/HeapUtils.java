@@ -16,6 +16,7 @@
 package net.cuprak.demo.heap;
 
 import org.netbeans.lib.profiler.heap.FieldValue;
+import org.netbeans.lib.profiler.heap.HeapSummary;
 import org.netbeans.lib.profiler.heap.Instance;
 import org.netbeans.lib.profiler.heap.ObjectArrayInstance;
 import org.netbeans.lib.profiler.heap.PrimitiveArrayInstance;
@@ -168,5 +169,14 @@ public class HeapUtils {
                     + ": " + fieldValue.getValue()
                     + " (type: " + fieldValue.getField().getType().getName() + ")");
         }
+    }
+
+    public static void dump(HeapSummary summary) {
+        System.err.println("Time: " + summary.getTime());
+        System.err.println("Total allocated bytes: " + summary.getTotalAllocatedBytes());
+        System.err.println("Total allocated instances: " + summary.getTotalAllocatedInstances());
+        System.err.println("Total live bytes: " + summary.getTotalLiveBytes());
+        System.err.println("Total live instances: " + summary.getTotalLiveInstances());
+
     }
 }
