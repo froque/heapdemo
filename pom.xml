@@ -12,7 +12,7 @@
         <dependency>
             <groupId>org.netbeans.modules</groupId>
             <artifactId>org-netbeans-lib-profiler</artifactId>
-            <version>RELEASE250</version>
+            <version>RELEASE280</version>
         </dependency>
     </dependencies>
 
