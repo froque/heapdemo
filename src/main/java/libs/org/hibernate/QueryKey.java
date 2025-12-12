@@ -1,4 +1,4 @@
-package org.hibernate;
+package libs.org.hibernate;
 
 public record QueryKey(
         String sqlQueryString,

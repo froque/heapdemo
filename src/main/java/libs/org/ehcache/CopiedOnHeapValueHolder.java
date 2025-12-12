@@ -1,4 +1,4 @@
-package org.ehcache;
+package libs.org.ehcache;
 
 public record CopiedOnHeapValueHolder<T>(
         T copiedValue,
